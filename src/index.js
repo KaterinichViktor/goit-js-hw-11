@@ -1,75 +1,78 @@
-import axios from 'axios';
 import Notiflix from 'notiflix';
+import SimpleLightbox from 'simplelightbox';
+import 'simplelightbox/dist/simple-lightbox.min.css';
+import { fetchImages } from './axios';
 
-const apiKey = '38773235-812bf30c777b3325b6df3cb6a';
 const searchForm = document.getElementById('search-form');
 const gallery = document.querySelector('.gallery');
 const loadMoreButton = document.querySelector('.load-more');
+const lightbox = new SimpleLightbox('.gallery a');
 let currentPage = 1;
 let currentQuery = '';
 
 searchForm.addEventListener('submit', async (e) => {
   e.preventDefault();
+  const query = e.target.searchQuery.value.trim();
+  if (query === '') return;
   gallery.innerHTML = '';
-  currentQuery = e.target.searchQuery.value;
+  currentQuery = query;
   currentPage = 1;
-  searchImages(currentQuery, currentPage);
-});
-
-loadMoreButton.addEventListener('click', () => {
-  currentPage++;
-  searchImages(currentQuery, currentPage);
-});
-
-async function searchImages(query, page) {
   try {
-    const response = await axios.get('https://pixabay.com/api/', {
-      params: {
-        key: apiKey,
-        q: query,
-        image_type: 'photo',
-        orientation: 'horizontal',
-        safesearch: true,
-        page: page,
-        per_page: 40,
-      },
-    });
-
-    const images = response.data.hits;
-    if (images.length === 0) {
-      Notiflix.Notify.failure("Sorry, there are no images matching your search query. Please try again.");
-      return;
-    }
-
-    images.forEach((image) => {
-      const imgElement = document.createElement('img');
-      imgElement.src = image.webformatURL;
-      imgElement.alt = image.tags;
-
-      const infoDiv = document.createElement('div');
-      infoDiv.className = 'info';
-      infoDiv.innerHTML = `
-        <p class="info-item"><b>Likes:</b> ${image.likes}</p>
-        <p class="info-item"><b>Views:</b> ${image.views}</p>
-        <p class="info-item"><b>Comments:</b> ${image.comments}</p>
-        <p class="info-item"><b>Downloads:</b> ${image.downloads}</p>
-      `;
-
-      const photoCardDiv = document.createElement('div');
-      photoCardDiv.className = 'photo-card';
-      photoCardDiv.appendChild(imgElement);
-      photoCardDiv.appendChild(infoDiv);
-
-      gallery.appendChild(photoCardDiv);
-    });
-
-    if (images.length < 40) {
-      loadMoreButton.style.display = 'none';
-      Notiflix.Notify.info("We're sorry, but you've reached the end of search results.");
-    } else {
+    const { images, totalPages } = await fetchImages(currentQuery, currentPage);
+    renderImages(images);
+    if (currentPage < totalPages) {
       loadMoreButton.style.display = 'block';
+    } else {
+      loadMoreButton.style.display = 'none';
     }
   } catch (error) {
-    console.error('Error fetching images:', error);
+    Notiflix.Notify.failure("Error fetching images. Please try again.");
   }
+});
+
+loadMoreButton.addEventListener('click', async () => {
+  currentPage++;
+  try {
+    const { images, totalPages } = await fetchImages(currentQuery, currentPage);
+    renderImages(images);
+    if (currentPage >= totalPages) {
+      loadMoreButton.style.display = 'none';
+    }
+  } catch (error) {
+    Notiflix.Notify.failure("Error fetching more images. Please try again.");
+  }
+});
+
+function renderImages(images) {
+  images.forEach((image) => {
+    const imgElement = document.createElement('img');
+    imgElement.src = image.webformatURL;
+    imgElement.alt = image.tags;
+
+    const aElement = document.createElement('a');
+    aElement.href = image.largeImageURL;
+    aElement.appendChild(imgElement);
+
+    const infoDiv = document.createElement('div');
+    infoDiv.className = 'info';
+    infoDiv.innerHTML = `
+      <p class="info-item"><b>Likes:</b> ${image.likes}</p>
+      <p class="info-item"><b>Views:</b> ${image.views}</p>
+      <p class="info-item"><b>Comments:</b> ${image.comments}</p>
+      <p class="info-item"><b>Downloads:</b> ${image.downloads}</p>
+    `;
+
+    const photoCardDiv = document.createElement('div');
+    photoCardDiv.className = 'photo-card';
+    photoCardDiv.appendChild(aElement);
+    photoCardDiv.appendChild(infoDiv);
+
+    gallery.appendChild(photoCardDiv);
+  });
+
+  lightbox.refresh();
 }
+
+loadMoreButton.style.display = 'none';
+
+
