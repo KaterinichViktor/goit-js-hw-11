@@ -6,7 +6,10 @@ import { fetchImages } from './axios';
 const searchForm = document.getElementById('search-form');
 const gallery = document.querySelector('.gallery');
 const loadMoreButton = document.querySelector('.load-more');
-const lightbox = new SimpleLightbox('.gallery a');
+const lightbox = new SimpleLightbox('.gallery a', {
+  captionType: 'attr',
+  captionsData: 'alt',
+});
 let currentPage = 1;
 let currentQuery = '';
 
@@ -44,32 +47,23 @@ loadMoreButton.addEventListener('click', async () => {
 });
 
 function renderImages(images) {
-  images.forEach((image) => {
-    const imgElement = document.createElement('img');
-    imgElement.src = image.webformatURL;
-    imgElement.alt = image.tags;
-
-    const aElement = document.createElement('a');
-    aElement.href = image.largeImageURL;
-    aElement.appendChild(imgElement);
-
-    const infoDiv = document.createElement('div');
-    infoDiv.className = 'info';
-    infoDiv.innerHTML = `
-      <p class="info-item"><b>Likes:</b> ${image.likes}</p>
-      <p class="info-item"><b>Views:</b> ${image.views}</p>
-      <p class="info-item"><b>Comments:</b> ${image.comments}</p>
-      <p class="info-item"><b>Downloads:</b> ${image.downloads}</p>
+  const photoCards = images.map((image) => {
+    return `
+      <div class="photo-card">
+        <a href="${image.largeImageURL}">
+          <img src="${image.webformatURL}" alt="${image.tags}">
+        </a>
+        <div class="info">
+          <p class="info-item"><b>Likes:</b> ${image.likes}</p>
+          <p class="info-item"><b>Views:</b> ${image.views}</p>
+          <p class="info-item"><b>Comments:</b> ${image.comments}</p>
+          <p class="info-item"><b>Downloads:</b> ${image.downloads}</p>
+        </div>
+      </div>
     `;
-
-    const photoCardDiv = document.createElement('div');
-    photoCardDiv.className = 'photo-card';
-    photoCardDiv.appendChild(aElement);
-    photoCardDiv.appendChild(infoDiv);
-
-    gallery.appendChild(photoCardDiv);
   });
 
+  gallery.innerHTML += photoCards.join('');
   lightbox.refresh();
 }
 
